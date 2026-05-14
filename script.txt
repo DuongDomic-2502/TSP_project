@@ -1,0 +1,10 @@
+Hướng đi của nhóm
+1. thuật toán làm
+    +) Branch and bound (3-opt) 
+    +) ACO (LK) 
+    +) GA (Or-otp) 
+    +) Simulated Annealing (2-opt) 
+
+2. Hướng đi
+    "Áp dụng 1 số thuật toán hiệu quả giải quyết bài toán TSP" tức là đi giới thiệu các thuật toán
+    có khả năng làm tốt bài toán TSP không so sánh
