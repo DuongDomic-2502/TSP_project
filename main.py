@@ -1,15 +1,10 @@
 import os
 import sys
 import time
-import matplotlib.pyplot as plt
 
 from Algorithms.BnB import BranchAndBound
+from util import read_cities
 
-from util import read_cities, path_cost
-
-# =========================================================
-#  HÀM CHẠY THUẬT TOÁN
-# =========================================================
 
 def run_algorithm(algorithm, name, output_dir):
 
@@ -23,21 +18,16 @@ def run_algorithm(algorithm, name, output_dir):
 
     end_time = time.time()
 
-    execution_time = end_time - start_time
-
     print(f"Best Cost      : {best_cost:.2f}")
-    print(f"Execution Time : {execution_time:.4f} seconds")
+    print(f"Execution Time : {end_time - start_time:.4f} seconds")
 
     return {
         "name": name,
         "route": best_route,
         "cost": best_cost,
-        "time": execution_time
+        "time": end_time - start_time
     }
 
-# =========================================================
-#  MAIN
-# =========================================================
 
 if __name__ == "__main__":
 
@@ -45,44 +35,41 @@ if __name__ == "__main__":
     print("1. Branch and Bound")
     print("2. Genetic Algorithm")
     print("3. Ant Colony Optimization")
+    print("4. Simulated Annealing")
 
-    choice = int(input("Chọn thuật toán (1-3): "))
-
-    size = int(input("Nhập số thành phố (ví dụ 10, 16, 20): "))
+    try:
+        choice = int(input("Chọn thuật toán (1-4): "))
+        size = int(input("Nhập số thành phố: "))
+    except ValueError:
+        print("Input không hợp lệ!")
+        sys.exit()
 
     cities = read_cities(size)
 
     OUTPUT_ROOT = "results"
     os.makedirs(OUTPUT_ROOT, exist_ok=True)
 
-    results = []
-
     # =========================
-    # BRANCH AND BOUND
+    # SELECT ALGORITHM
     # =========================
     if choice == 1:
         algo = BranchAndBound(cities)
         name = "Branch and Bound"
-        folder = f"{OUTPUT_ROOT}/BnB"
+        output_dir = f"{OUTPUT_ROOT}/BnB"
 
-    # =========================
-    # GA
-    # =========================
     elif choice == 2:
-        from Algorithms.GA import GeneticAlgorithm
+        from Algorithms.GA import GA
 
-        algo = GeneticAlgorithm(
+        algo = GA(
             cities=cities,
-            population_size=100,
-            generations=200,
+            pop_size=100,
+            n_generations=200,
             mutation_rate=0.01
         )
-        name = "Genetic Algorithm"
-        folder = f"{OUTPUT_ROOT}/GA"
 
-    # =========================
-    # ACO
-    # =========================
+        name = "Genetic Algorithm"
+        output_dir = f"{OUTPUT_ROOT}/GA"
+
     elif choice == 3:
         from Algorithms.ACO import ACO
 
@@ -95,8 +82,22 @@ if __name__ == "__main__":
             evaporation_rate=0.5,
             Q=100
         )
+
         name = "Ant Colony Optimization"
-        folder = f"{OUTPUT_ROOT}/ACO"
+        output_dir = f"{OUTPUT_ROOT}/ACO"
+
+    elif choice == 4:
+        from Algorithms.SA import SA
+
+        algo = SA(
+            cities=cities,
+            initial_temp=1000,
+            cooling_rate=0.995,
+            n_iterations=5000
+        )
+
+        name = "Simulated Annealing"
+        output_dir = f"{OUTPUT_ROOT}/SA"
 
     else:
         print("Lựa chọn không hợp lệ!")
@@ -105,7 +106,11 @@ if __name__ == "__main__":
     # =========================
     # RUN
     # =========================
-    result = run_algorithm(algo, name, folder)
+    result = run_algorithm(
+        algo,
+        name,
+        output_dir
+    )
 
     print("\n==============================")
     print("       FINAL RESULT")
@@ -114,7 +119,7 @@ if __name__ == "__main__":
     print(f"Algorithm : {result['name']}")
     print(f"Cost      : {result['cost']:.2f}")
     print(f"Time      : {result['time']:.4f} s")
-    
-    print("\nBest Route (coordinates):")
+
+    print("\nBest Route:")
     for city in result['route']:
         print(city)

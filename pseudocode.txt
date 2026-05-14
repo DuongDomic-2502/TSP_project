@@ -1,0 +1,30 @@
+ACO
+                Initialize pheromone matrix τ
+                best_cost ← ∞
+
+                FOR iter = 1 → T DO
+
+                    FOR each ant DO
+                        chọn random start
+                        xây tour bằng xác suất:
+                            P(i → j) ∝ τ(i,j)^α * (1/d(i,j))^β
+
+                        tính cost tour
+
+                        nếu cost < best_cost:
+                            cập nhật best_path, best_cost
+                    END FOR
+
+                    evaporate pheromone:
+                        τ ← (1 - ρ) * τ
+
+                    update pheromone:
+                        với mỗi tour tốt:
+                            τ(i,j) += Q / cost
+
+                END FOR
+
+                RETURN best_path, best_cost
+
+
+BnB
