@@ -137,5 +137,5 @@ class SA:
         plt.plot(x, y, 'o-')
         plt.title(f"SA TSP | best cost = {self.best_cost:.4f}")
 
-        plt.savefig(f"{output_dir}/sa_final.png")
+        plt.savefig(f"{output_dir}/SA_final.png")
         plt.close()

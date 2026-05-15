@@ -153,8 +153,8 @@ class ACO:
         x.append(x[0])
         y.append(y[0])
 
-        plt.plot(x, y, 'o-', color='red')
+        plt.plot(x, y, 'o-', color='blue')
         plt.title(f"Best ACO route | cost = {self.best_cost:.4f}")
 
-        plt.savefig(f"{output_dir}/final_route.png")
+        plt.savefig(f"{output_dir}/ACO_final.png")
         plt.close()

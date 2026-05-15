@@ -1,6 +1,6 @@
 Hướng đi của nhóm
 1. thuật toán làm
-    +) Branch and bound (3-opt) 
+    +) Branch and bound (3-opt, tối ưu nghiệm khởi tạo với thuật toán greedy) 
     +) ACO (LK) 
     +) GA (Or-otp) 
     +) Simulated Annealing (2-opt) 

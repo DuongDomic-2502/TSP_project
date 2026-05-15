@@ -161,7 +161,7 @@ class GA:
             self.best_cost
         )
 
-    # ----------------------------
+    # # ----------------------------
     def _save_final(self, output_dir):
         plt.figure(figsize=(7, 5))
 
@@ -173,5 +173,5 @@ class GA:
         plt.plot(x, y, 'o-')
         plt.title(f"GA TSP | best cost = {self.best_cost:.4f}")
 
-        plt.savefig(f"{output_dir}/ga_final.png")
+        plt.savefig(f"{output_dir}/GA_final.png")
         plt.close()

@@ -1,8 +1,6 @@
 import os
 import sys
 import time
-
-from Algorithms.BnB import BranchAndBound
 from util import read_cities
 
 
@@ -36,9 +34,10 @@ if __name__ == "__main__":
     print("2. Genetic Algorithm")
     print("3. Ant Colony Optimization")
     print("4. Simulated Annealing")
+    print("5. Branch and Bound + 3-opt")
 
     try:
-        choice = int(input("Chọn thuật toán (1-4): "))
+        choice = int(input("Chọn thuật toán (1-5): "))
         size = int(input("Nhập số thành phố: "))
     except ValueError:
         print("Input không hợp lệ!")
@@ -53,6 +52,7 @@ if __name__ == "__main__":
     # SELECT ALGORITHM
     # =========================
     if choice == 1:
+        from Algorithms.BnB import BranchAndBound
         algo = BranchAndBound(cities)
         name = "Branch and Bound"
         output_dir = f"{OUTPUT_ROOT}/BnB"
@@ -100,13 +100,19 @@ if __name__ == "__main__":
         name = "Simulated Annealing"
         output_dir = f"{OUTPUT_ROOT}/SA"
 
+    elif choice == 5:
+        from AlgorithmsPlus.BnBPlus import BnBPlus
+        algo = BnBPlus(cities)
+        name = "Branch and Bound + 3-opt"
+        output_dir = f"{OUTPUT_ROOT}/BnBPlus"
+
     else:
         print("Lựa chọn không hợp lệ!")
         sys.exit()
 
     # =========================
     # RUN
-    # =========================``
+    # =========================
     result = run_algorithm(
         algo,
         name,

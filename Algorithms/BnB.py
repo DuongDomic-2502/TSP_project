@@ -151,9 +151,9 @@ class BranchAndBound:
             y = [c.y for c in route] + [route[0].y]
 
             plt.plot(x, y, 'o-')
-            plt.title(f"Best TSP route | cost = {self.best_cost:.4f}")
+            plt.title(f"Best BnB TSP route | cost = {self.best_cost:.4f}")
 
-            plt.savefig(f"{output_dir}/final_route.png")
+            plt.savefig(f"{output_dir}/BnBFinal.png")
             plt.close()
 
         return (
