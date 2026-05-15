@@ -34,35 +34,52 @@ class GA:
         return cost
 
     # ----------------------------
+    # Khởi tạo quần thể ngẫu nhiên
+    # Khớp pseudocode: "Quần_thể = Khởi_tạo_ngẫu_nhiên(N)"
+    # ----------------------------
     def _init_population(self):
         base = list(range(self.n))
         return [random.sample(base, self.n) for _ in range(self.pop_size)]
 
     # ----------------------------
-    def _selection(self, pop, costs):
-        idx = np.argsort(costs)
-        return [pop[i] for i in idx[:self.pop_size // 2]]
+    # Tournament selection
+    # Khớp pseudocode: "cha = Chọn_lọc(Quần_thể)"
+    # Chọn từng cá thể một theo tournament, không cắt top 50%
+    # ----------------------------
+    def _selection(self, pop, costs, k=3):
+        candidates = random.sample(range(len(pop)), k)
+        best = min(candidates, key=lambda i: costs[i])
+        return pop[best][:]
 
+    # ----------------------------
+    # Order Crossover (OX)
+    # Khớp pseudocode:
+    #   "Nếu random() < p_cross: con1, con2 = Lai_ghép(cha, mẹ)"
+    #   "Ngược lại: con1, con2 = cha, mẹ"
     # ----------------------------
     def _crossover(self, p1, p2):
         if random.random() > self.cr:
-            return p1[:]
+            return p1[:], p2[:]         # không lai → giữ nguyên cha mẹ
 
         a, b = sorted(random.sample(range(self.n), 2))
 
-        child = [-1] * self.n
-        child[a:b] = p1[a:b]
+        def ox(parent_a, parent_b):
+            child = [-1] * self.n
+            child[a:b] = parent_a[a:b]
+            fill = [x for x in parent_b if x not in child]
+            j = 0
+            for i in range(self.n):
+                if child[i] == -1:
+                    child[i] = fill[j]
+                    j += 1
+            return child
 
-        fill = [x for x in p2 if x not in child]
+        return ox(p1, p2), ox(p2, p1)  # trả về cả 2 con
 
-        j = 0
-        for i in range(self.n):
-            if child[i] == -1:
-                child[i] = fill[j]
-                j += 1
-
-        return child
-
+    # ----------------------------
+    # Swap mutation
+    # Khớp pseudocode:
+    #   "Nếu random() < p_mut: con = Đột_biến(con)"
     # ----------------------------
     def _mutate(self, path):
         if random.random() < self.mr:
@@ -71,42 +88,71 @@ class GA:
         return path
 
     # ----------------------------
+    # Chạy GA
+    # Khớp pseudocode:
+    #   Quần_thể = Khởi_tạo_ngẫu_nhiên(N)
+    #   Đánh_giá fitness
+    #   Lặp T lần:
+    #       Quần_thể_mới = []
+    #       while |Quần_thể_mới| < N:
+    #           cha = Chọn_lọc(...)
+    #           mẹ = Chọn_lọc(...)
+    #           con1, con2 = Lai_ghép(cha, mẹ)   (có/không theo p_cross)
+    #           con1 = Đột_biến(con1)             (có/không theo p_mut)
+    #           Quần_thể_mới.append(con1, con2)
+    #       Đánh_giá fitness Quần_thể_mới
+    #       Cập nhật best
+    #       Quần_thể = Quần_thể_mới
+    # ----------------------------
     def run(self, output_dir=None):
 
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
 
+        # Khởi tạo quần thể
         population = self._init_population()
+
+        # Đánh giá fitness ban đầu
+        costs = [self._path_cost(p) for p in population]
 
         for _ in range(self.n_generations):
 
+            new_pop = []
+
+            # --------------------
+            # Tạo quần thể mới hoàn toàn từ con cái
+            # --------------------
+            while len(new_pop) < self.pop_size:
+
+                # Chọn lọc: tournament selection
+                cha = self._selection(population, costs)
+                me  = self._selection(population, costs)
+
+                # Lai ghép → 2 con
+                con1, con2 = self._crossover(cha, me)
+
+                # Đột biến từng con
+                con1 = self._mutate(con1)
+                con2 = self._mutate(con2)
+
+                new_pop.append(con1)
+                if len(new_pop) < self.pop_size:
+                    new_pop.append(con2)
+
+            # --------------------
+            # Đánh giá fitness quần thể mới
+            # --------------------
+            population = new_pop
             costs = [self._path_cost(p) for p in population]
 
-            # update best
-            best_idx = np.argmin(costs)
+            # --------------------
+            # Cập nhật best SAU khi có quần thể mới
+            # --------------------
+            best_idx = int(np.argmin(costs))
             if costs[best_idx] < self.best_cost:
                 self.best_cost = costs[best_idx]
                 self.best_route = population[best_idx][:]
 
-            # selection
-            selected = self._selection(population, costs)
-
-            # next generation
-            new_pop = selected[:]
-
-            while len(new_pop) < self.pop_size:
-                p1, p2 = random.sample(selected, 2)
-
-                child = self._crossover(p1, p2)
-                child = self._mutate(child)
-
-                new_pop.append(child)
-
-            population = new_pop
-
-        # ----------------------------
-        # SAVE FINAL ONLY
-        # ----------------------------
         if output_dir and self.best_route:
             self._save_final(output_dir)
 

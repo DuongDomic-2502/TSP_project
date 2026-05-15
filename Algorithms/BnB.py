@@ -56,54 +56,77 @@ class BranchAndBound:
     # ----------------------------
     # Lower bound
     # ----------------------------
-    def _lower_bound(self, current, visited):
-        unvisited = [i for i in range(self.n) if i not in visited]
+    def _lower_bound(self, current, visited_set, start):
+        unvisited = [i for i in range(self.n) if i not in visited_set]
 
         if not unvisited:
-            return self.distance_matrix[current][visited[0]]
+            return self.distance_matrix[current][start]
 
         lb = 0
 
+        # MST trên các node chưa thăm
         lb += self._mst_cost(unvisited)
 
+        # Cạnh ngắn nhất từ current tới unvisited
         lb += min(self.distance_matrix[current][j] for j in unvisited)
 
-        start = visited[0]
+        # Cạnh ngắn nhất từ unvisited về start
         lb += min(self.distance_matrix[j][start] for j in unvisited)
 
         return lb
 
     # ----------------------------
-    # Branch and Bound DFS
+    # Branch and Bound (hàng đợi tường minh - DFS stack)
+    # Khớp với pseudocode:
+    #   Hàng_đợi = [nút_gốc]
+    #   while Hàng_đợi không rỗng:
+    #       nút = Chọn_nút(...)
+    #       lb  = Tính_cận_dưới(nút)
+    #       if lb >= z_tốt_nhất: Cắt tỉa
+    #       if lời giải khả thi: cập nhật best
+    #       else: Phân_nhánh → push con vào hàng đợi
     # ----------------------------
-    def _bnb(self, current, visited, path, current_cost):
+    def _bnb(self, start):
+        # Mỗi phần tử trong stack là một "nút":
+        # (current, path, visited_set, current_cost)
+        stack = [(start, [start], {start}, 0)]
 
-        if len(visited) == self.n:
-            total_cost = current_cost + self.distance_matrix[current][path[0]]
+        while stack:
+            # Chọn nút (DFS → pop từ cuối)
+            current, path, visited_set, current_cost = stack.pop()
 
-            if total_cost < self.best_cost:
-                self.best_cost = total_cost
-                self.best_route = path[:]
+            # Tính cận dưới của nút hiện tại
+            lb = current_cost + self._lower_bound(current, visited_set, start)
 
-            return
+            # Cắt tỉa
+            if lb >= self.best_cost:
+                continue
 
-        for nxt in range(self.n):
-            if nxt not in visited:
+            # Lời giải khả thi (đã thăm hết)
+            if len(visited_set) == self.n:
+                total_cost = current_cost + self.distance_matrix[current][start]
 
-                new_cost = current_cost + self.distance_matrix[current][nxt]
+                if total_cost < self.best_cost:
+                    self.best_cost = total_cost
+                    self.best_route = path[:]
 
-                lb = new_cost + self._lower_bound(nxt, visited + [nxt])
+                continue
 
-                if lb >= self.best_cost:
-                    continue
+            # Phân nhánh → tạo các nút con, push vào stack
+            for nxt in range(self.n):
+                if nxt not in visited_set:          # O(1) với set
+                    new_cost = current_cost + self.distance_matrix[current][nxt]
 
-                path.append(nxt)
-                visited.append(nxt)
+                    # Chỉ push nếu còn hi vọng (tỉa sớm)
+                    child_lb = new_cost + self._lower_bound(nxt, visited_set | {nxt}, start)
 
-                self._bnb(nxt, visited, path, new_cost)
-
-                path.pop()
-                visited.pop()
+                    if child_lb < self.best_cost:
+                        stack.append((
+                            nxt,
+                            path + [nxt],
+                            visited_set | {nxt},
+                            new_cost
+                        ))
 
     # ----------------------------
     # Run
@@ -116,10 +139,9 @@ class BranchAndBound:
         self.best_cost = float('inf')
         self.best_route = None
 
-        start = 0
-        self._bnb(start, [start], [start], 0)
+        self._bnb(start=0)
 
-        # save final route
+        # Save final route
         if output_dir and self.best_route:
             plt.figure(figsize=(7, 5))
 

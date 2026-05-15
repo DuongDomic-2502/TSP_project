@@ -34,27 +34,58 @@ class ACO:
         return self.cities[i].distance(self.cities[j])
 
     # ----------------------------
-    def _select_next(self, current, unvisited):
-        probs = []
+    # Xây lộ trình cho một kiến
+    # Khớp pseudocode:
+    #   visited = {điểm_xuất_phát}
+    #   while chưa thăm hết:
+    #       P[j] = τ^α × η^β / Σ P
+    #       Chọn j_tiếp_theo theo xác suất P
+    # ----------------------------
+    def _build_route(self, start):
+        visited = {start}
+        path = [start]
+        cost = 0
 
-        for j in unvisited:
-            dist = self._dist(current, j)
-            dist = max(dist, 1e-9)
+        while len(visited) < self.n:
+            current = path[-1]
+            unvisited = [j for j in range(self.n) if j not in visited]
 
-            tau = self.pheromone[current][j] ** self.alpha
-            eta = (1.0 / dist) ** self.beta
+            # Tính xác suất cho từng node chưa thăm
+            probs = []
+            for j in unvisited:
+                dist = max(self._dist(current, j), 1e-9)
+                tau = self.pheromone[current][j] ** self.alpha
+                eta = (1.0 / dist) ** self.beta
+                probs.append(tau * eta)
 
-            probs.append(tau * eta)
+            # Chuẩn hóa xác suất
+            probs = np.array(probs)
+            if probs.sum() == 0:
+                probs = np.ones(len(unvisited)) / len(unvisited)
+            else:
+                probs /= probs.sum()
 
-        probs = np.array(probs)
+            # Chọn node tiếp theo theo xác suất
+            nxt = np.random.choice(unvisited, p=probs)
 
-        if probs.sum() == 0:
-            return np.random.choice(unvisited)
+            cost += self._dist(current, nxt)
+            path.append(nxt)
+            visited.add(nxt)
 
-        probs /= probs.sum()
+        # Quay về điểm xuất phát
+        cost += self._dist(path[-1], path[0])
+        path.append(path[0])
 
-        return np.random.choice(unvisited, p=probs)
+        return path, cost
 
+    # ----------------------------
+    # Chạy ACO
+    # Khớp pseudocode:
+    #   Lặp T lần:
+    #       Với mỗi kiến k: Xây_lộ_trình(k)
+    #       Evaporate pheromone
+    #       Deposit pheromone
+    #       Cập nhật best SAU khi tất cả kiến xong
     # ----------------------------
     def run(self, output_dir=None):
 
@@ -67,59 +98,42 @@ class ACO:
             all_costs = []
 
             # --------------------
-            # Construct solutions
+            # Bước 1: Tất cả kiến xây lộ trình
             # --------------------
-            for _ in range(self.n_ants):
-
-                start = np.random.randint(self.n)
-
-                path = [start]
-                visited = set([start])
-
-                cost = 0
-
-                while len(visited) < self.n:
-
-                    current = path[-1]
-                    unvisited = list(set(range(self.n)) - visited)
-
-                    nxt = self._select_next(current, unvisited)
-
-                    cost += self._dist(current, nxt)
-
-                    path.append(nxt)
-                    visited.add(nxt)
-
-                # return to start
-                cost += self._dist(path[-1], path[0])
-                path.append(path[0])
+            for k in range(self.n_ants):
+                # Mỗi kiến xuất phát từ một thành phố theo thứ tự
+                start = k % self.n
+                path, cost = self._build_route(start)
 
                 all_paths.append(path)
                 all_costs.append(cost)
 
-                # update best
-                if cost < self.best_cost:
-                    self.best_cost = cost
-                    self.best_path = path[:-1]
+            # --------------------
+            # Bước 2: Cập nhật best SAU khi tất cả kiến xong
+            # (khớp pseudocode: "Cập nhật lời giải tốt nhất")
+            # --------------------
+            best_idx = int(np.argmin(all_costs))
+            if all_costs[best_idx] < self.best_cost:
+                self.best_cost = all_costs[best_idx]
+                self.best_path = all_paths[best_idx][:-1]  # bỏ node lặp cuối
 
             # --------------------
-            # Evaporation
+            # Bước 3: Bay hơi pheromone
             # --------------------
             self.pheromone *= (1 - self.rho)
 
             # --------------------
-            # Deposit pheromone
+            # Bước 4: Deposit pheromone
             # --------------------
             for path, cost in zip(all_paths, all_costs):
                 deposit = self.Q / cost
-
                 for i in range(len(path) - 1):
                     a, b = path[i], path[i + 1]
                     self.pheromone[a][b] += deposit
                     self.pheromone[b][a] += deposit
 
         # --------------------
-        # Save final result
+        # Lưu kết quả
         # --------------------
         if output_dir and self.best_path:
             self._save_final(output_dir)

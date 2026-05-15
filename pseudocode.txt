@@ -1,30 +1,120 @@
 ACO
-                Initialize pheromone matrix τ
-                best_cost ← ∞
+ACO(đồ thị G, số_kiến m, số_vòng_lặp T, α, β, ρ):
+    Khởi tạo pheromone τ[i][j] = τ₀ với mọi cạnh (i,j)
 
-                FOR iter = 1 → T DO
+    Lặp T lần:
+        solutions = []
 
-                    FOR each ant DO
-                        chọn random start
-                        xây tour bằng xác suất:
-                            P(i → j) ∝ τ(i,j)^α * (1/d(i,j))^β
+        Với mỗi kiến k trong 1..m:
+            lộ_trình = Xây_lộ_trình(k, τ, α, β)
+            solutions.append(lộ_trình)
 
-                        tính cost tour
+        Cập nhật pheromone:
+            τ[i][j] = (1 - ρ) × τ[i][j]          // Bay hơi
+            Với mỗi kiến k:
+                τ[i][j] += ΔQ / độ_dài(lộ_trình_k) // Bổ sung
 
-                        nếu cost < best_cost:
-                            cập nhật best_path, best_cost
-                    END FOR
+        Cập nhật lời giải tốt nhất
 
-                    evaporate pheromone:
-                        τ ← (1 - ρ) * τ
+    Trả về lời giải tốt nhất
 
-                    update pheromone:
-                        với mỗi tour tốt:
-                            τ(i,j) += Q / cost
 
-                END FOR
+Xây_lộ_trình(kiến k, τ, α, β):
+    visited = {điểm_xuất_phát}
+    lộ_trình = [điểm_xuất_phát]
 
-                RETURN best_path, best_cost
+    Trong khi chưa thăm hết:
+        j_hiện_tại = lộ_trình[-1]
+        Với mỗi j chưa thăm:
+            P[j] = τ[j_hiện_tại][j]^α × η[j_hiện_tại][j]^β
+        P[j] = P[j] / Σ P           // Chuẩn hóa xác suất
+        Chọn j_tiếp_theo theo xác suất P
+        lộ_trình.append(j_tiếp_theo)
+
+    Trả về lộ_trình
+
+
+
+GA
+GA(kích_thước_quần_thể N, số_thế_hệ T, p_cross, p_mut):
+    Quần_thể = Khởi_tạo_ngẫu_nhiên(N)
+    Đánh_giá fitness cho mỗi cá thể
+
+    Lặp T lần:
+        Quần_thể_mới = []
+
+        Trong khi |Quần_thể_mới| < N:
+            // Chọn lọc
+            cha = Chọn_lọc(Quần_thể)     // VD: tournament, roulette
+            mẹ = Chọn_lọc(Quần_thể)
+
+            // Lai ghép
+            Nếu random() < p_cross:
+                con1, con2 = Lai_ghép(cha, mẹ)
+            Ngược lại:
+                con1, con2 = cha, mẹ
+
+            // Đột biến
+            Nếu random() < p_mut:
+                con1 = Đột_biến(con1)
+                con2 = Đột_biến(con2)
+
+            Quần_thể_mới.append(con1, con2)
+
+        Đánh_giá fitness cho Quần_thể_mới
+        Quần_thể = Quần_thể_mới
+
+    Trả về cá thể có fitness tốt nhất
+
+
+SA
+SA(lời_giải_ban_đầu s₀, nhiệt_độ_đầu T₀, tốc_độ_nguội α):
+    s_hiện_tại = s₀
+    T = T₀
+    s_tốt_nhất = s₀
+
+    Trong khi T > T_min:
+        Lặp L lần (số bước tại mỗi nhiệt độ):
+            s_láng_giềng = Tạo_láng_giềng(s_hiện_tại)
+            Δf = f(s_láng_giềng) - f(s_hiện_tại)
+
+            Nếu Δf < 0:                          // Lời giải tốt hơn
+                s_hiện_tại = s_láng_giềng
+            Ngược lại:                           // Chấp nhận có xác suất
+                Nếu random() < exp(-Δf / T):
+                    s_hiện_tại = s_láng_giềng
+
+            Nếu f(s_hiện_tại) < f(s_tốt_nhất):
+                s_tốt_nhất = s_hiện_tại
+
+        T = α × T                                // Giảm nhiệt độ
+
+    Trả về s_tốt_nhất
 
 
 BnB
+BnB(bài_toán P):
+    Hàng_đợi = [nút_gốc]
+    z_tốt_nhất = +∞           // Cận trên toàn cục (bài toán min)
+    x_tốt_nhất = None
+
+    Trong khi Hàng_đợi không rỗng:
+        nút = Chọn_nút(Hàng_đợi)   // BFS / DFS / Best-First
+
+        // Tính cận dưới của nút
+        lb = Tính_cận_dưới(nút)
+
+        Nếu lb >= z_tốt_nhất:
+            Cắt tỉa nút              // Không cần khám phá thêm
+            Tiếp tục
+
+        Nếu nút là lời giải khả thi:
+            Nếu f(nút) < z_tốt_nhất:
+                z_tốt_nhất = f(nút)
+                x_tốt_nhất = nút
+        Ngược lại:
+            // Phân nhánh
+            con_trái, con_phải = Phân_nhánh(nút)
+            Hàng_đợi.append(con_trái, con_phải)
+
+    Trả về x_tốt_nhất, z_tốt_nhất

@@ -91,9 +91,10 @@ if __name__ == "__main__":
 
         algo = SA(
             cities=cities,
-            initial_temp=1000,
+            initial_temp=1000.0,
             cooling_rate=0.995,
-            n_iterations=5000
+            t_min=1e-8,
+            steps_per_temp=100   # L bước tại mỗi nhiệt độ
         )
 
         name = "Simulated Annealing"
@@ -105,7 +106,7 @@ if __name__ == "__main__":
 
     # =========================
     # RUN
-    # =========================
+    # =========================``
     result = run_algorithm(
         algo,
         name,
