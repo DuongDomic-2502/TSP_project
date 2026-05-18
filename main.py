@@ -23,7 +23,7 @@ def run_algorithm(algorithm, name, output_dir):
         "name": name,
         "route": best_route,
         "cost": best_cost,
-        "time": end_time - start_time # 26855.87
+        "time": end_time - start_time
     }
 
 
@@ -34,12 +34,9 @@ if __name__ == "__main__":
     print("2. Genetic Algorithm")
     print("3. Ant Colony Optimization")
     print("4. Simulated Annealing")
-    print("5. Branch and Bound plus")
-    print("6. ACO Plus")
-    print("7. GA Plus")
 
     try:
-        choice = int(input("Chọn thuật toán (1-5): "))
+        choice = int(input("Chọn thuật toán (1-4): "))
         size = int(input("Nhập số thành phố: "))
     except ValueError:
         print("Input không hợp lệ!")
@@ -64,10 +61,10 @@ if __name__ == "__main__":
 
         algo = GA(
             cities=cities,
-            pop_size=100,
-            n_generations=200,
-            crossover_rate=0.8,
-            mutation_rate=0.01
+            pop_size=250,
+            n_generations=800,
+            crossover_rate=0.85,
+            mutation_rate=0.08
         )
 
         name = "Genetic Algorithm"
@@ -97,45 +94,12 @@ if __name__ == "__main__":
             initial_temp=1000.0,
             cooling_rate=0.995,
             t_min=1e-8,
-            steps_per_temp=100   # L bước tại mỗi nhiệt độ
+            steps_per_temp=100
         )
 
         name = "Simulated Annealing"
         output_dir = f"{OUTPUT_ROOT}/SA"
 
-    elif choice == 5:
-        from AlgorithmsPlus.BnBPlus import BnBPlus
-        algo = BnBPlus(cities)
-        name = "Branch and Bound plus"
-        output_dir = f"{OUTPUT_ROOT}/BnBPlus"
-
-    
-    elif choice == 6:
-        from AlgorithmsPlus.ACOPlus import ACOPlus
-        algo = ACOPlus(
-            cities=cities,
-            n_ants=25,
-            n_iterations=5,
-            alpha=1.0,
-            beta=4.0,
-            evaporation_rate=0.5,
-            Q=100
-        )   
-        name = "ACO Plus"
-        output_dir = f"{OUTPUT_ROOT}/ACOPlus"
-        
-        
-    elif choice == 7:
-        from AlgorithmsPlus.GAPlus import GAPlus
-        algo = GAPlus(
-            cities=cities,
-            pop_size=25,
-            n_generations=5,
-            crossover_rate=0.9,
-            mutation_rate=0.1
-        )
-        name = "GA Plus"
-        output_dir = f"{OUTPUT_ROOT}/GAPlus"
     else:
         print("Lựa chọn không hợp lệ!")
         sys.exit()

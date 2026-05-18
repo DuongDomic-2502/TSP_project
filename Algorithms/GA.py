@@ -44,7 +44,6 @@ class GA:
     # ----------------------------
     # Tournament selection
     # Khớp pseudocode: "cha = Chọn_lọc(Quần_thể)"
-    # Chọn từng cá thể một theo tournament, không cắt top 50%
     # ----------------------------
     def _selection(self, pop, costs, k=3):
         candidates = random.sample(range(len(pop)), k)
@@ -59,7 +58,7 @@ class GA:
     # ----------------------------
     def _crossover(self, p1, p2):
         if random.random() > self.cr:
-            return p1[:], p2[:]         # không lai → giữ nguyên cha mẹ
+            return p1[:], p2[:]
 
         a, b = sorted(random.sample(range(self.n), 2))
 
@@ -74,7 +73,7 @@ class GA:
                     j += 1
             return child
 
-        return ox(p1, p2), ox(p2, p1)  # trả về cả 2 con
+        return ox(p1, p2), ox(p2, p1)
 
     # ----------------------------
     # Swap mutation
@@ -93,12 +92,14 @@ class GA:
     #   Quần_thể = Khởi_tạo_ngẫu_nhiên(N)
     #   Đánh_giá fitness
     #   Lặp T lần:
-    #       Quần_thể_mới = []
+    #       Giữ lại elite (cá thể tốt nhất)
+    #       Quần_thể_mới = [elite]
     #       while |Quần_thể_mới| < N:
     #           cha = Chọn_lọc(...)
     #           mẹ = Chọn_lọc(...)
-    #           con1, con2 = Lai_ghép(cha, mẹ)   (có/không theo p_cross)
-    #           con1 = Đột_biến(con1)             (có/không theo p_mut)
+    #           con1, con2 = Lai_ghép(cha, mẹ)
+    #           con1 = Đột_biến(con1)
+    #           con2 = Đột_biến(con2)
     #           Quần_thể_mới.append(con1, con2)
     #       Đánh_giá fitness Quần_thể_mới
     #       Cập nhật best
@@ -117,10 +118,16 @@ class GA:
 
         for _ in range(self.n_generations):
 
-            new_pop = []
+            # --------------------
+            # Elitism: giữ lại cá thể tốt nhất
+            # đảm bảo best không bao giờ tệ hơn
+            # --------------------
+            elite_idx = int(np.argmin(costs))
+            elite = population[elite_idx][:]
+            new_pop = [elite]
 
             # --------------------
-            # Tạo quần thể mới hoàn toàn từ con cái
+            # Tạo phần còn lại từ con cái
             # --------------------
             while len(new_pop) < self.pop_size:
 
@@ -161,7 +168,7 @@ class GA:
             self.best_cost
         )
 
-    # # ----------------------------
+    # ----------------------------
     def _save_final(self, output_dir):
         plt.figure(figsize=(7, 5))
 

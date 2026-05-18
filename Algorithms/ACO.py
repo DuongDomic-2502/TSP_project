@@ -35,11 +35,7 @@ class ACO:
 
     # ----------------------------
     # Xây lộ trình cho một kiến
-    # Khớp pseudocode:
-    #   visited = {điểm_xuất_phát}
-    #   while chưa thăm hết:
-    #       P[j] = τ^α × η^β / Σ P
-    #       Chọn j_tiếp_theo theo xác suất P
+    # Trả về path gồm n node, KHÔNG lặp node đầu
     # ----------------------------
     def _build_route(self, start):
         visited = {start}
@@ -72,20 +68,14 @@ class ACO:
             path.append(nxt)
             visited.add(nxt)
 
-        # Quay về điểm xuất phát
+        # Cộng cạnh quay về điểm xuất phát
+        # KHÔNG append vào path — path luôn có đúng n node
         cost += self._dist(path[-1], path[0])
-        path.append(path[0])
 
         return path, cost
 
     # ----------------------------
     # Chạy ACO
-    # Khớp pseudocode:
-    #   Lặp T lần:
-    #       Với mỗi kiến k: Xây_lộ_trình(k)
-    #       Evaporate pheromone
-    #       Deposit pheromone
-    #       Cập nhật best SAU khi tất cả kiến xong
     # ----------------------------
     def run(self, output_dir=None):
 
@@ -101,7 +91,6 @@ class ACO:
             # Bước 1: Tất cả kiến xây lộ trình
             # --------------------
             for k in range(self.n_ants):
-                # Mỗi kiến xuất phát từ một thành phố theo thứ tự
                 start = k % self.n
                 path, cost = self._build_route(start)
 
@@ -110,12 +99,11 @@ class ACO:
 
             # --------------------
             # Bước 2: Cập nhật best SAU khi tất cả kiến xong
-            # (khớp pseudocode: "Cập nhật lời giải tốt nhất")
             # --------------------
             best_idx = int(np.argmin(all_costs))
             if all_costs[best_idx] < self.best_cost:
                 self.best_cost = all_costs[best_idx]
-                self.best_path = all_paths[best_idx][:-1]  # bỏ node lặp cuối
+                self.best_path = all_paths[best_idx]
 
             # --------------------
             # Bước 3: Bay hơi pheromone
@@ -124,11 +112,13 @@ class ACO:
 
             # --------------------
             # Bước 4: Deposit pheromone
+            # Duyệt n cạnh: 0→1, 1→2, ..., n-2→n-1, n-1→0
             # --------------------
             for path, cost in zip(all_paths, all_costs):
                 deposit = self.Q / cost
-                for i in range(len(path) - 1):
-                    a, b = path[i], path[i + 1]
+                for i in range(self.n):
+                    a = path[i]
+                    b = path[(i + 1) % self.n]  # cạnh cuối → đầu nhờ % n
                     self.pheromone[a][b] += deposit
                     self.pheromone[b][a] += deposit
 

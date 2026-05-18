@@ -1,9 +1,9 @@
 Hướng đi của nhóm
 1. thuật toán làm
-    +) Branch and bound (tối ưu nghiệm khởi tạo với thuật toán greedy, loại bỏ hoán vị) 
-    +) ACO (2-otp, tối ưu tham số)  tùy vào mô hình
-    +) GA (2-otp, tối ưu tham số )   tùy vào mô hình
-    +) Simulated Annealing (2-opt, tối ưu tham số)  tùy vào mô hình
+    +) Branch and bound 
+    +) ACO 
+    +) GA 
+    +) Simulated Annealing 
 
 2. Hướng đi
     "Áp dụng 1 số thuật toán hiệu quả giải quyết bài toán TSP" tức là đi giới thiệu các thuật toán

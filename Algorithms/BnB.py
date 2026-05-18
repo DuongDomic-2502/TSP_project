@@ -1,9 +1,9 @@
 import os
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import imageio.v2 as imageio
-
-from util import path_cost
 
 
 class BnB:
@@ -16,102 +16,119 @@ class BnB:
         self.best_route = None
         self.best_cost = float('inf')
 
-        self.distance_matrix = self._compute_distance_matrix()
+        self.distance_matrix = (
+            self._compute_distance_matrix()
+        )
+
+        # =============================================
+        # Precompute: 2 cạnh nhỏ nhất của mỗi đỉnh
+        # Dùng cho lower bound — tính 1 lần duy nhất
+        # =============================================
+        self._min2 = self._precompute_min2()
 
     # -------------------------------------------------
-    # Distance matrix
+    # Distance Matrix — vectorized
     # -------------------------------------------------
     def _compute_distance_matrix(self):
 
-        matrix = np.zeros((self.n, self.n))
+        coords = np.array(
+            [[c.x, c.y] for c in self.cities]
+        )
 
-        for i in range(self.n):
-            for j in range(self.n):
+        diff = (
+            coords[:, np.newaxis, :]
+            - coords[np.newaxis, :, :]
+        )
 
-                if i != j:
+        matrix = np.sqrt((diff ** 2).sum(axis=2))
 
-                    matrix[i][j] = (
-                        self.cities[i].distance(
-                            self.cities[j]
-                        )
-                    )
-
-                else:
-                    matrix[i][j] = float('inf')
+        # Diagonal = inf để tránh self-loop
+        np.fill_diagonal(matrix, float('inf'))
 
         return matrix
 
     # -------------------------------------------------
-    # Improved Lower Bound
+    # Precompute 2 cạnh nhỏ nhất mỗi đỉnh
+    # Dùng trong lower bound Held-Karp
     # -------------------------------------------------
-    def _lower_bound(self, visited, current):
+    def _precompute_min2(self):
 
-        unvisited = [
-            i for i in range(self.n)
-            if i not in visited
-        ]
+        min2 = []
 
-        # ---------------------------------------------
-        # Nếu đã đi hết
-        # ---------------------------------------------
-        if not unvisited:
+        for i in range(self.n):
 
-            return self.distance_matrix[current][0]
-
-        lb = 0
-
-        # ---------------------------------------------
-        # Với mỗi đỉnh chưa thăm:
-        # lấy 2 cạnh nhỏ nhất
-        # ---------------------------------------------
-        for u in unvisited:
-
-            edges = sorted(
-                self.distance_matrix[u][v]
-                for v in range(self.n)
-                if u != v
+            row = sorted(
+                self.distance_matrix[i][j]
+                for j in range(self.n)
+                if j != i
             )
 
-            lb += (edges[0] + edges[1]) / 2
+            min2.append((row[0], row[1]))
 
-        # ---------------------------------------------
-        # current -> unvisited nhỏ nhất
-        # ---------------------------------------------
-        min_current = min(
+        return min2
+
+    # -------------------------------------------------
+    # Lower Bound — Held-Karp chuẩn
+    #
+    # Công thức:
+    #   LB = current_cost
+    #      + Σ (min1[u] + min2[u]) / 2   (u chưa thăm)
+    #      + min cạnh từ current → unvisited
+    #      + min cạnh từ unvisited → start (0)
+    #
+    # KHÔNG tính đôi nhờ chia 2 đúng chỗ
+    # -------------------------------------------------
+    def _lower_bound(
+        self,
+        current_cost,
+        current,
+        unvisited_set
+    ):
+
+        if not unvisited_set:
+            return (
+                current_cost
+                + self.distance_matrix[current][0]
+            )
+
+        lb = current_cost
+
+        for u in unvisited_set:
+            lb += (self._min2[u][0] + self._min2[u][1]) / 2
+
+        min_from_current = min(
             self.distance_matrix[current][v]
-            for v in unvisited
+            for v in unvisited_set
         )
+        lb += min_from_current / 2
 
-        # ---------------------------------------------
-        # unvisited -> start nhỏ nhất
-        # ---------------------------------------------
-        min_return = min(
+        min_to_start = min(
             self.distance_matrix[v][0]
-            for v in unvisited
+            for v in unvisited_set
         )
-
-        lb += (min_current + min_return) / 2
+        lb += min_to_start / 2
 
         return lb
 
     # -------------------------------------------------
-    # Branch and Bound
+    # Branch and Bound — đệ quy thuần
     # -------------------------------------------------
     def _branch_and_bound(
         self,
         current,
-        visited,
+        visited_set,
         path,
         current_cost,
+        unvisited_set,
         frames,
         output_dir,
         frame_count
     ):
 
         # ---------------------------------------------
-        # Nếu đã đi hết
+        # Base case: đã thăm hết
         # ---------------------------------------------
-        if len(visited) == self.n:
+        if not unvisited_set:
 
             total_cost = (
                 current_cost
@@ -161,45 +178,43 @@ class BnB:
                     frame_count[0] += 1
 
             return
-
         # ---------------------------------------------
-        # Branching
+        # Pruning — lower bound vượt best hiện tại
         # ---------------------------------------------
-        for next_city in range(self.n):
-
-            if next_city not in visited:
-
-                new_cost = (
-                    current_cost
-                    + self.distance_matrix[current][next_city]
-                )
-
-                # -------------------------------------
-                # Lower Bound
-                # -------------------------------------
-                lb = self._lower_bound(
-                    visited + [next_city],
-                    next_city
-                )
-
-                # -------------------------------------
-                # Pruning
-                # -------------------------------------
-                if new_cost + lb < self.best_cost:
-
-                    path.append(next_city)
-
-                    self._branch_and_bound(
-                        next_city,
-                        visited + [next_city],
-                        path,
-                        new_cost,
-                        frames,
-                        output_dir,
-                        frame_count
-                    )
-
-                    path.pop()
+        lb = self._lower_bound(
+            current_cost,
+            current,
+            unvisited_set
+        )
+        if lb >= self.best_cost:
+            return
+        for next_city in unvisited_set:
+            new_cost = (
+                current_cost
+                + self.distance_matrix[current][next_city]
+            )
+            new_unvisited = unvisited_set - {next_city}
+            branch_lb = self._lower_bound(
+                new_cost,
+                next_city,
+                new_unvisited
+            )
+            if branch_lb >= self.best_cost:
+                continue
+            path.append(next_city)
+            visited_set.add(next_city)
+            self._branch_and_bound(
+                next_city,
+                visited_set,
+                path,
+                new_cost,
+                new_unvisited,
+                frames,
+                output_dir,
+                frame_count
+            )
+            path.pop()
+            visited_set.discard(next_city)
 
     # -------------------------------------------------
     # Run
@@ -209,17 +224,18 @@ class BnB:
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
 
-        frames = []
-        frame_count = [0]
-
         self.best_cost = float('inf')
         self.best_route = None
 
+        frames = []
+        frame_count = [0]
+
         self._branch_and_bound(
             current=0,
-            visited=[0],
+            visited_set={0},
             path=[0],
             current_cost=0,
+            unvisited_set=set(range(1, self.n)),
             frames=frames,
             output_dir=output_dir,
             frame_count=frame_count

@@ -1,95 +1,198 @@
 ACO
-ACO(đồ thị G, số_kiến m, số_vòng_lặp T, α, β, ρ):
-    Khởi tạo pheromone τ[i][j] = τ₀ với mọi cạnh (i,j)
+ACO(cities, n_ants, n_iterations, alpha, beta, rho, Q):
+    pheromone[i][j] ← 1,  best_cost ← +∞,  best_path ← null
+    Lặp n_iterations lần:
+        Với mỗi kiến k trong 1..n_ants:
+            visited ← {k%n},  path ← [k%n],  cost ← 0
+            Trong khi chưa thăm hết:
+                P[j] ← pheromone[current][j]^alpha × (1/dist(current,j))^beta
+                P[j] ← P[j] / Σ P
+                next  ← chọn theo xác suất P
+                cost += dist(current, next)
+                path.append(next),  visited.add(next)
+            cost += dist(path[-1], path[0])
+            path[k], cost[k] ← path, cost
+        Cập nhật best_cost, best_path từ kiến có cost nhỏ nhất
+        pheromone[i][j] ← (1 - rho) × pheromone[i][j]
+        Với mỗi kiến k:
+            Với mỗi cạnh (a,b) trong path[k]:
+                pheromone[a][b] += Q / cost[k]
+                pheromone[b][a] += Q / cost[k]
 
-    Lặp T lần:
-        solutions = []
+    Trả về best_path, best_cost
 
-        Với mỗi kiến k trong 1..m:
-            lộ_trình = Xây_lộ_trình(k, τ, α, β)
-            solutions.append(lộ_trình)
+-------------------------------------------------------------------------------------------
 
-        Cập nhật pheromone:
-            τ[i][j] = (1 - ρ) × τ[i][j]          // Bay hơi
-            Với mỗi kiến k:
-                τ[i][j] += ΔQ / độ_dài(lộ_trình_k) // Bổ sung
-
-        Cập nhật lời giải tốt nhất
-
-    Trả về lời giải tốt nhất
-
-
-Xây_lộ_trình(kiến k, τ, α, β):
-    visited = {điểm_xuất_phát}
-    lộ_trình = [điểm_xuất_phát]
-
-    Trong khi chưa thăm hết:
-        j_hiện_tại = lộ_trình[-1]
-        Với mỗi j chưa thăm:
-            P[j] = τ[j_hiện_tại][j]^α × η[j_hiện_tại][j]^β
-        P[j] = P[j] / Σ P           // Chuẩn hóa xác suất
-        Chọn j_tiếp_theo theo xác suất P
-        lộ_trình.append(j_tiếp_theo)
-
-    Trả về lộ_trình
-
-
-
-GA
-GA(kích_thước_quần_thể N, số_thế_hệ T, p_cross, p_mut):
-    Quần_thể = Khởi_tạo_ngẫu_nhiên(N)
-    Đánh_giá fitness cho mỗi cá thể
-
-    Lặp T lần:
-        Quần_thể_mới = []
-
-        Trong khi |Quần_thể_mới| < N:
-            // Chọn lọc
-            cha = Chọn_lọc(Quần_thể)     // VD: tournament, roulette
-            mẹ = Chọn_lọc(Quần_thể)
-
-            // Lai ghép
-            Nếu random() < p_cross:
-                con1, con2 = Lai_ghép(cha, mẹ)
-            Ngược lại:
-                con1, con2 = cha, mẹ
-
-            // Đột biến
-            Nếu random() < p_mut:
-                con1 = Đột_biến(con1)
-                con2 = Đột_biến(con2)
-
-            Quần_thể_mới.append(con1, con2)
-
-        Đánh_giá fitness cho Quần_thể_mới
-        Quần_thể = Quần_thể_mới
-
-    Trả về cá thể có fitness tốt nhất
+ACO(cities, n_ants, n_iterations, alpha, beta, rho, Q):
+    Khởi tạo pheromone tất cả cạnh bằng 1, best_cost vô cùng lớn, best_path rỗng
+    Lặp n_iterations lần:
+        Với mỗi kiến k trong 1..n_ants:
+            Bắt đầu từ thành phố k % n, chưa thăm thành phố nào khác, chi phí bằng 0
+            Trong khi chưa thăm hết thành phố:
+                Tính xác suất chọn từng thành phố chưa thăm
+                dựa trên lượng pheromone mũ alpha nhân heuristic mũ beta
+                Chuẩn hóa xác suất
+                Chọn thành phố tiếp theo theo xác suất đó
+                Cộng khoảng cách vào chi phí
+                Thêm thành phố vào lộ trình và danh sách đã thăm
+            Cộng thêm khoảng cách từ thành phố cuối về điểm xuất phát
+            Lưu lại lộ trình và chi phí của kiến k
+        Cập nhật best_cost và best_path từ kiến có chi phí nhỏ nhất
+        Bay hơi pheromone tất cả cạnh theo tỉ lệ rho
+        Với mỗi kiến k:
+            Với mỗi cạnh trong lộ trình của kiến k:
+                Bổ sung pheromone hai chiều theo Q chia cho chi phí
+    Trả về best_path, best_cost
 
 
-SA
-SA(lời_giải_ban_đầu s₀, nhiệt_độ_đầu T₀, tốc_độ_nguội α):
-    s_hiện_tại = s₀
-    T = T₀
-    s_tốt_nhất = s₀
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    Trong khi T > T_min:
-        Lặp L lần (số bước tại mỗi nhiệt độ):
-            s_láng_giềng = Tạo_láng_giềng(s_hiện_tại)
-            Δf = f(s_láng_giềng) - f(s_hiện_tại)
+GA(cities, pop_size, n_generations, cr, mr):
+    population ← {p1, p2, ..., p_N}  (hoán vị ngẫu nhiên)
+    costs[i]   ← Σ dist(p[i], p[i+1]) + dist(p[-1], p[0])
+    best_cost  ← +∞
+    Lặp n_generations lần:
+        new_pop ← [argmin(costs)]
+        WHILE |new_pop| < pop_size:
+            cha ← argmin(costs[k])  với k ∈ random(pop, 3)
+            mẹ  ← argmin(costs[k])  với k ∈ random(pop, 3)
+            IF random() < cr:
+                Chọn [a, b] ngẫu nhiên
+                con1[a:b] ← cha[a:b],  điền còn lại theo mẹ
+                con2[a:b] ← mẹ[a:b],   điền còn lại theo cha
+            ELSE:
+                con1 ← cha,  con2 ← mẹ
+            IF random() < mr:  con1[i] ↔ con1[j]
+            IF random() < mr:  con2[i] ↔ con2[j]
+            new_pop ← new_pop ∪ {con1, con2}
+        costs[i] ← Σ dist(p[i], p[i+1]) + dist(p[-1], p[0])
+        IF min(costs) < best_cost:
+            best_cost  ← min(costs)
+            best_route ← argmin(costs)
 
-            Nếu Δf < 0:                          // Lời giải tốt hơn
-                s_hiện_tại = s_láng_giềng
-            Ngược lại:                           // Chấp nhận có xác suất
-                Nếu random() < exp(-Δf / T):
-                    s_hiện_tại = s_láng_giềng
+    Trả về best_route, best_cost
 
-            Nếu f(s_hiện_tại) < f(s_tốt_nhất):
-                s_tốt_nhất = s_hiện_tại
+-------------------------------------------------------------------------------
 
-        T = α × T                                // Giảm nhiệt độ
+GA(cities, pop_size, n_generations, crossover_rate, mutation_rate):
+    Khởi tạo quần thể ngẫu nhiên, tính chi phí từng cá thể, đặt best_cost vô cùng lớn
+    Lặp n_generations lần:
+        Giữ lại cá thể tốt nhất vào quần thể mới
+        Trong khi quần thể mới chưa đủ số lượng:
+            Chọn cha và mẹ bằng cách lấy ngẫu nhiên k cá thể và chọn cái tốt nhất
+            Nếu xác suất cho phép thì lai ghép:
+                Chọn ngẫu nhiên một đoạn gen từ cha, điền phần còn lại theo thứ tự mẹ → con1
+                Chọn ngẫu nhiên một đoạn gen từ mẹ, điền phần còn lại theo thứ tự cha → con2
+            Ngược lại giữ nguyên cha mẹ làm con1 và con2
+            Nếu xác suất cho phép thì hoán đổi hai gene ngẫu nhiên của con1
+            Nếu xác suất cho phép thì hoán đổi hai gene ngẫu nhiên của con2
+            Thêm con1 và con2 vào quần thể mới
+        Tính lại chi phí cho quần thể mới
+        Cập nhật best_cost và best_route nếu tìm được cá thể tốt hơn
 
-    Trả về s_tốt_nhất
+    Trả về best_route, best_cost
+
+#######################################################################################
+
+BranchAndBound(current, path, unvisited, current_cost):
+
+    IF unvisited = ∅ THEN
+        total_cost ← current_cost + dist[current][0]
+        IF total_cost < best_cost THEN
+            best_cost  ← total_cost
+            best_route ← path
+        END IF
+        RETURN
+    END IF
+    lb ← current_cost
+       + Σ (min1[u] + min2[u]) / 2   ∀u ∈ unvisited
+       + min(dist[current][v]) / 2    ∀v ∈ unvisited
+       + min(dist[v][0]) / 2          ∀v ∈ unvisited
+    IF lb ≥ best_cost THEN RETURN
+    FOR EACH next ∈ unvisited DO
+        new_cost  ← current_cost + dist[current][next]
+        branch_lb ← new_cost
+                  + Σ (min1[u] + min2[u]) / 2   ∀u ∈ unvisited \ {next}
+                  + min(dist[next][v]) / 2        ∀v ∈ unvisited \ {next}
+                  + min(dist[v][0]) / 2           ∀v ∈ unvisited \ {next}
+        IF branch_lb < best_cost THEN
+            path.append(next)
+            BranchAndBound(next, path, unvisited \ {next}, new_cost)
+            path.pop()
+        END IF
+    END FOR
+
+    Trả về best_route, best_cost
+
+    -----------------------------------------------------------------------------------
+
+BranchAndBound(current, path, unvisited, current_cost):
+
+    Nếu đã thăm hết thành phố:
+        Tính tổng chi phí bằng cách cộng thêm cạnh quay về thành phố đầu
+        Nếu tổng chi phí nhỏ hơn best_cost thì cập nhật best_cost và best_route
+        Kết thúc
+    Tính cận dưới dựa trên:
+        Chi phí hiện tại
+        Cộng trung bình hai cạnh nhỏ nhất của mỗi thành phố chưa thăm
+        Cộng nửa cạnh ngắn nhất từ thành phố hiện tại đến thành phố chưa thăm
+        Cộng nửa cạnh ngắn nhất từ thành phố chưa thăm về thành phố đầu
+    Nếu cận dưới lớn hơn hoặc bằng best_cost thì cắt nhánh, kết thúc
+    Với mỗi thành phố chưa thăm:
+        Tính chi phí mới khi đi đến thành phố đó
+        Tính cận dưới cho nhánh con
+        Nếu cận dưới còn nhỏ hơn best_cost thì:
+            Thêm thành phố vào path
+            Gọi đệ quy tiếp tục tìm kiếm
+            Xóa thành phố khỏi path (backtrack)
+
+    Trả về best_route, best_cost
 
 
-BnB
+##############################################################################################
+
+SA(cities, T0, alpha, T_min, L):
+
+    current ← hoán vị ngẫu nhiên các thành phố
+    current_cost ← Σ dist(path[i], path[i+1]) + dist(path[-1], path[0])
+    best_route ← current,  best_cost ← current_cost
+    T ← T0
+
+    WHILE T > T_min:
+
+        Lặp L lần:
+            candidate ← hoán đổi 2 gene ngẫu nhiên của current
+            Δ ← cost(candidate) - current_cost
+
+            IF Δ < 0:
+                current ← candidate,  current_cost ← current_cost + Δ
+            ELSE IF random() < e^(-Δ/T):
+                current ← candidate,  current_cost ← current_cost + Δ
+
+            IF current_cost < best_cost:
+                best_cost ← current_cost,  best_route ← current
+
+        T ← alpha × T
+
+    Trả về best_route, best_cost
+
+---------------------------------------------------------------------------------------------
+SA(cities, T0, alpha, T_min, L):
+
+    Khởi tạo lộ trình ngẫu nhiên, tính chi phí, đặt làm lộ trình tốt nhất
+    Đặt nhiệt độ ban đầu bằng T0
+
+    Trong khi nhiệt độ còn lớn hơn T_min:
+
+        Lặp L lần:
+            Tạo lộ trình láng giềng bằng cách hoán đổi hai thành phố ngẫu nhiên
+            Tính độ chênh lệch chi phí giữa láng giềng và lộ trình hiện tại
+
+            Nếu láng giềng tốt hơn thì chấp nhận ngay
+            Ngược lại chấp nhận láng giềng với xác suất phụ thuộc vào độ chênh lệch và nhiệt độ
+
+            Nếu lộ trình hiện tại tốt hơn best thì cập nhật best_cost và best_route
+
+        Giảm nhiệt độ theo tỉ lệ alpha
+
+    Trả về best_route, best_cost
