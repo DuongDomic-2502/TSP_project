@@ -7,10 +7,10 @@ import math
 
 class SA:
     def __init__(self, cities,
-                 initial_temp=1000.0,
-                 cooling_rate=0.995,
-                 t_min=1e-8,
-                 steps_per_temp=50):       # L bước tại mỗi nhiệt độ
+                 initial_temp=0,
+                 cooling_rate=0,
+                 t_min=0,
+                 steps_per_temp=0):       # L bước tại mỗi nhiệt độ
 
         self.cities = cities
         self.n = len(cities)

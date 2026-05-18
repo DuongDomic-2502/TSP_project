@@ -93,28 +93,3 @@ SA(lời_giải_ban_đầu s₀, nhiệt_độ_đầu T₀, tốc_độ_nguội 
 
 
 BnB
-BnB(bài_toán P):
-    Hàng_đợi = [nút_gốc]
-    z_tốt_nhất = +∞           // Cận trên toàn cục (bài toán min)
-    x_tốt_nhất = None
-
-    Trong khi Hàng_đợi không rỗng:
-        nút = Chọn_nút(Hàng_đợi)   // BFS / DFS / Best-First
-
-        // Tính cận dưới của nút
-        lb = Tính_cận_dưới(nút)
-
-        Nếu lb >= z_tốt_nhất:
-            Cắt tỉa nút              // Không cần khám phá thêm
-            Tiếp tục
-
-        Nếu nút là lời giải khả thi:
-            Nếu f(nút) < z_tốt_nhất:
-                z_tốt_nhất = f(nút)
-                x_tốt_nhất = nút
-        Ngược lại:
-            // Phân nhánh
-            con_trái, con_phải = Phân_nhánh(nút)
-            Hàng_đợi.append(con_trái, con_phải)
-
-    Trả về x_tốt_nhất, z_tốt_nhất

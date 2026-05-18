@@ -23,7 +23,7 @@ def run_algorithm(algorithm, name, output_dir):
         "name": name,
         "route": best_route,
         "cost": best_cost,
-        "time": end_time - start_time
+        "time": end_time - start_time # 26855.87
     }
 
 
@@ -34,7 +34,9 @@ if __name__ == "__main__":
     print("2. Genetic Algorithm")
     print("3. Ant Colony Optimization")
     print("4. Simulated Annealing")
-    print("5. Branch and Bound + 3-opt")
+    print("5. Branch and Bound plus")
+    print("6. ACO Plus")
+    print("7. GA Plus")
 
     try:
         choice = int(input("Chọn thuật toán (1-5): "))
@@ -52,8 +54,8 @@ if __name__ == "__main__":
     # SELECT ALGORITHM
     # =========================
     if choice == 1:
-        from Algorithms.BnB import BranchAndBound
-        algo = BranchAndBound(cities)
+        from Algorithms.BnB import BnB
+        algo = BnB(cities)
         name = "Branch and Bound"
         output_dir = f"{OUTPUT_ROOT}/BnB"
 
@@ -64,6 +66,7 @@ if __name__ == "__main__":
             cities=cities,
             pop_size=100,
             n_generations=200,
+            crossover_rate=0.8,
             mutation_rate=0.01
         )
 
@@ -103,9 +106,38 @@ if __name__ == "__main__":
     elif choice == 5:
         from AlgorithmsPlus.BnBPlus import BnBPlus
         algo = BnBPlus(cities)
-        name = "Branch and Bound + 3-opt"
+        name = "Branch and Bound plus"
         output_dir = f"{OUTPUT_ROOT}/BnBPlus"
 
+    
+    elif choice == 6:
+        from AlgorithmsPlus.ACOPlus import ACOPlus
+        algo = ACOPlus(
+            cities=cities,
+            n_ants=25,
+            n_iterations=80,
+            alpha=1.0,
+            beta=4.0,
+            evaporation_rate=0.5,
+            Q=100
+        )   
+        name = "ACO Plus"
+        output_dir = f"{OUTPUT_ROOT}/ACOPlus"
+        
+        
+        
+        
+    elif choice == 7:
+        from AlgorithmsPlus.GAPlus import GAPlus
+        algo = GAPlus(
+            cities=cities,
+            pop_size=120,
+            n_generations=200,
+            crossover_rate=0.9,
+            mutation_rate=0.15
+        )
+        name = "GA Plus"
+        output_dir = f"{OUTPUT_ROOT}/GAPlus"
     else:
         print("Lựa chọn không hợp lệ!")
         sys.exit()

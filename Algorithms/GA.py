@@ -6,10 +6,10 @@ import random
 
 class GA:
     def __init__(self, cities,
-                 pop_size=50,
-                 n_generations=200,
-                 crossover_rate=0.8,
-                 mutation_rate=0.2):
+                 pop_size=0,
+                 n_generations=0,
+                 crossover_rate=0,
+                 mutation_rate=0):
 
         self.cities = cities
         self.n = len(cities)

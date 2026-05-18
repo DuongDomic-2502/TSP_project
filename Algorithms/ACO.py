@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 
 class ACO:
     def __init__(self, cities,
-                 n_ants=10,
-                 n_iterations=100,
-                 alpha=1.0,
-                 beta=2.0,
-                 evaporation_rate=0.5,
-                 Q=1.0):
+                 n_ants=0,
+                 n_iterations=0,
+                 alpha=0.0,
+                 beta=0.0,
+                 evaporation_rate=0.0,
+                 Q=0.0):
 
         self.cities = cities
         self.n = len(cities)

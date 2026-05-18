@@ -1,10 +1,15 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import imageio.v2 as imageio
+
+from util import path_cost
 
 
 class BnBPlus:
+
     def __init__(self, cities):
+
         self.cities = cities
         self.n = len(cities)
 
@@ -13,247 +18,316 @@ class BnBPlus:
 
         self.distance_matrix = self._compute_distance_matrix()
 
-    # ----------------------------
-    # Distance matrix
-    # ----------------------------
+    # =================================================
+    # Distance Matrix
+    # =================================================
     def _compute_distance_matrix(self):
+
         matrix = np.zeros((self.n, self.n))
+
         for i in range(self.n):
             for j in range(self.n):
-                if i == j:
-                    matrix[i][j] = float('inf')
+
+                if i != j:
+
+                    matrix[i][j] = (
+                        self.cities[i].distance(
+                            self.cities[j]
+                        )
+                    )
+
                 else:
-                    matrix[i][j] = self.cities[i].distance(self.cities[j])
+                    matrix[i][j] = float('inf')
+
         return matrix
 
-    # ----------------------------
-    # Greedy Nearest-Neighbor – tạo nghiệm khởi tạo O(n²)
-    # Dùng làm warm-start để best_cost chặt trước khi BnB chạy
-    # ----------------------------
-    def _greedy_initial(self, start=0):
+    # =================================================
+    # GREEDY INITIAL SOLUTION
+    # -> tạo upper bound ban đầu
+    # =================================================
+    def _greedy_initial_solution(self):
+
         visited = [False] * self.n
-        route = [start]
-        visited[start] = True
-        cost = 0.0
 
-        for _ in range(self.n - 1):
-            current = route[-1]
-            best_dist = float('inf')
-            best_next = -1
+        route = [0]
+        visited[0] = True
 
-            for j in range(self.n):
-                if not visited[j] and self.distance_matrix[current][j] < best_dist:
-                    best_dist = self.distance_matrix[current][j]
-                    best_next = j
-
-            route.append(best_next)
-            visited[best_next] = True
-            cost += best_dist
-
-        cost += self.distance_matrix[route[-1]][start]
-        return route, cost
-
-    # ----------------------------
-    # MST (Prim) lower bound
-    # ----------------------------
-    def _mst_cost(self, nodes):
-        if len(nodes) <= 1:
-            return 0
-
-        nodes = list(nodes)
-        in_mst = set([nodes[0]])
+        current = 0
         total_cost = 0
 
-        while len(in_mst) < len(nodes):
-            best_edge = float('inf')
-            best_v = None
+        # ---------------------------------------------
+        # Nearest Neighbor
+        # ---------------------------------------------
+        for _ in range(self.n - 1):
 
-            for u in in_mst:
-                for v in nodes:
-                    if v not in in_mst:
-                        if self.distance_matrix[u][v] < best_edge:
-                            best_edge = self.distance_matrix[u][v]
-                            best_v = v
+            next_city = None
+            best_dist = float('inf')
 
-            in_mst.add(best_v)
-            total_cost += best_edge
+            for j in range(self.n):
 
-        return total_cost
+                if (
+                    not visited[j]
+                    and self.distance_matrix[current][j]
+                    < best_dist
+                ):
 
-    # ----------------------------
-    # Lower bound = cost_đã_đi + MST(unvisited) + min_in + min_out
-    # ----------------------------
-    def _lower_bound(self, current, visited_set, start):
-        unvisited = [i for i in range(self.n) if i not in visited_set]
+                    best_dist = (
+                        self.distance_matrix[current][j]
+                    )
+
+                    next_city = j
+
+            route.append(next_city)
+
+            visited[next_city] = True
+
+            total_cost += best_dist
+
+            current = next_city
+
+        # quay về thành phố đầu
+        total_cost += self.distance_matrix[current][0]
+
+        self.best_route = route[:]
+        self.best_cost = total_cost
+
+    # =================================================
+    # Improved Lower Bound
+    # =================================================
+    def _lower_bound(self, visited, current):
+
+        unvisited = [
+            i for i in range(self.n)
+            if i not in visited
+        ]
 
         if not unvisited:
-            return self.distance_matrix[current][start]
+
+            return self.distance_matrix[current][0]
 
         lb = 0
-        lb += self._mst_cost(unvisited)
-        lb += min(self.distance_matrix[current][j] for j in unvisited)
-        lb += min(self.distance_matrix[j][start] for j in unvisited)
+
+        # ---------------------------------------------
+        # 2 cạnh nhỏ nhất của mỗi node
+        # ---------------------------------------------
+        for u in unvisited:
+
+            edges = sorted(
+                self.distance_matrix[u][v]
+                for v in range(self.n)
+                if u != v
+            )
+
+            lb += (edges[0] + edges[1]) / 2
+
+        # current -> unvisited nhỏ nhất
+        min_current = min(
+            self.distance_matrix[current][v]
+            for v in unvisited
+        )
+
+        # unvisited -> start nhỏ nhất
+        min_return = min(
+            self.distance_matrix[v][0]
+            for v in unvisited
+        )
+
+        lb += (min_current + min_return) / 2
 
         return lb
 
-    # ----------------------------
-    # Branch and Bound (DFS stack) – truyền thống, không thay đổi
-    # Hiệu quả nhờ best_cost được khởi tạo chặt từ greedy + 3-opt
-    # ----------------------------
-    def _bnb(self, start):
-        stack = [(start, [start], {start}, 0)]
+    # =================================================
+    # Branch and Bound
+    # =================================================
+    def _branch_and_bound(
+        self,
+        current,
+        visited,
+        path,
+        current_cost,
+        frames,
+        output_dir,
+        frame_count
+    ):
 
-        while stack:
-            current, path, visited_set, current_cost = stack.pop()
+        # ---------------------------------------------
+        # Đã đi hết
+        # ---------------------------------------------
+        if len(visited) == self.n:
 
-            lb = current_cost + self._lower_bound(current, visited_set, start)
+            total_cost = (
+                current_cost
+                + self.distance_matrix[current][0]
+            )
 
-            if lb >= self.best_cost:
+            if total_cost < self.best_cost:
+
+                self.best_cost = total_cost
+                self.best_route = path[:]
+
+                # -------------------------------------
+                # Save GIF frame
+                # -------------------------------------
+                if output_dir and frame_count[0] < 50:
+
+                    plt.figure(figsize=(8, 6))
+
+                    route = [
+                        self.cities[i]
+                        for i in path
+                    ]
+
+                    x = [c.x for c in route] + [route[0].x]
+                    y = [c.y for c in route] + [route[0].y]
+
+                    plt.plot(x, y, 'ro-')
+
+                    plt.title(
+                        f'BnB TSP | Cost = {total_cost:.2f}'
+                    )
+
+                    frame_path = (
+                        f'{output_dir}/bnb_'
+                        f'{frame_count[0]}.png'
+                    )
+
+                    plt.savefig(frame_path)
+                    plt.close()
+
+                    frames.append(
+                        imageio.imread(frame_path)
+                    )
+
+                    os.remove(frame_path)
+
+                    frame_count[0] += 1
+
+            return
+
+        # =================================================
+        # Loại bỏ hoán vị dư thừa:
+        # sort theo khoảng cách gần nhất
+        # -> node tốt xét trước
+        # =================================================
+        candidates = []
+
+        for next_city in range(self.n):
+
+            if next_city not in visited:
+
+                dist = (
+                    self.distance_matrix[current][next_city]
+                )
+
+                candidates.append(
+                    (dist, next_city)
+                )
+
+        # ---------------------------------------------
+        # xét thành phố gần trước
+        # -> tìm best sớm hơn
+        # -> pruning mạnh hơn
+        # ---------------------------------------------
+        candidates.sort()
+
+        for _, next_city in candidates:
+
+            new_cost = (
+                current_cost
+                + self.distance_matrix[current][next_city]
+            )
+
+            lb = self._lower_bound(
+                visited + [next_city],
+                next_city
+            )
+
+            # -----------------------------------------
+            # PRUNING
+            # -----------------------------------------
+            if new_cost + lb >= self.best_cost:
                 continue
 
-            if len(visited_set) == self.n:
-                total_cost = current_cost + self.distance_matrix[current][start]
+            path.append(next_city)
 
-                if total_cost < self.best_cost:
-                    self.best_cost = total_cost
-                    self.best_route = path[:]
+            self._branch_and_bound(
+                next_city,
+                visited + [next_city],
+                path,
+                new_cost,
+                frames,
+                output_dir,
+                frame_count
+            )
 
-                continue
+            path.pop()
 
-            for nxt in range(self.n):
-                if nxt not in visited_set:
-                    new_cost = current_cost + self.distance_matrix[current][nxt]
-
-                    child_lb = new_cost + self._lower_bound(nxt, visited_set | {nxt}, start)
-
-                    if child_lb < self.best_cost:
-                        stack.append((
-                            nxt,
-                            path + [nxt],
-                            visited_set | {nxt},
-                            new_cost
-                        ))
-
-    # ----------------------------
-    # 3-opt helpers
-    # ----------------------------
-    def _route_cost(self, route):
-        n = len(route)
-        return sum(
-            self.distance_matrix[route[i]][route[(i + 1) % n]]
-            for i in range(n)
-        )
-
-    def _three_opt_move(self, route, i, j, k):
-        n = len(route)
-        a, b = route[i], route[(i + 1) % n]
-        c, d = route[j], route[(j + 1) % n]
-        e, f = route[k], route[(k + 1) % n]
-
-        d0 = (self.distance_matrix[a][b]
-              + self.distance_matrix[c][d]
-              + self.distance_matrix[e][f])
-
-        seg_A = route[:i + 1]
-        seg_B = route[i + 1:j + 1]
-        seg_C = route[j + 1:k + 1]
-        seg_D = route[k + 1:]
-
-        candidates = [
-            # 1. Đảo B
-            (seg_A + seg_B[::-1] + seg_C + seg_D,
-             self.distance_matrix[a][seg_B[-1]] + self.distance_matrix[seg_B[0]][d] + self.distance_matrix[e][f]),
-            # 2. Đảo C
-            (seg_A + seg_B + seg_C[::-1] + seg_D,
-             self.distance_matrix[a][b] + self.distance_matrix[c][seg_C[-1]] + self.distance_matrix[seg_C[0]][f]),
-            # 3. Đảo B và C
-            (seg_A + seg_B[::-1] + seg_C[::-1] + seg_D,
-             self.distance_matrix[a][seg_B[-1]] + self.distance_matrix[seg_B[0]][seg_C[-1]] + self.distance_matrix[seg_C[0]][f]),
-            # 4. Hoán vị B↔C
-            (seg_A + seg_C + seg_B + seg_D,
-             self.distance_matrix[a][d] + self.distance_matrix[e][b] + self.distance_matrix[c][f]),
-            # 5. Hoán vị B↔C, đảo B
-            (seg_A + seg_C + seg_B[::-1] + seg_D,
-             self.distance_matrix[a][d] + self.distance_matrix[e][seg_B[-1]] + self.distance_matrix[seg_B[0]][f]),
-            # 6. Hoán vị B↔C, đảo C
-            (seg_A + seg_C[::-1] + seg_B + seg_D,
-             self.distance_matrix[a][seg_C[-1]] + self.distance_matrix[seg_C[0]][b] + self.distance_matrix[c][f]),
-            # 7. Hoán vị B↔C, đảo cả hai
-            (seg_A + seg_C[::-1] + seg_B[::-1] + seg_D,
-             self.distance_matrix[a][seg_C[-1]] + self.distance_matrix[seg_C[0]][seg_B[-1]] + self.distance_matrix[seg_B[0]][f]),
-        ]
-
-        best_delta = 0.0
-        best_route = None
-
-        for new_route, d_new in candidates:
-            delta = d_new - d0
-            if delta < best_delta:
-                best_delta = delta
-                best_route = new_route
-
-        return best_delta, best_route
-
-    def _three_opt(self, route):
-        improved = True
-        best_route = route[:]
-        n = len(best_route)
-
-        while improved:
-            improved = False
-            for i in range(n - 2):
-                for j in range(i + 1, n - 1):
-                    for k in range(j + 1, n):
-                        delta, new_route = self._three_opt_move(best_route, i, j, k)
-                        if new_route is not None and delta < -1e-10:
-                            best_route = new_route
-                            n = len(best_route)
-                            improved = True
-                            break
-                    if improved:
-                        break
-                if improved:
-                    break
-
-        return best_route
-
-    # ----------------------------
-    # Run
-    # ----------------------------
+    # =================================================
+    # RUN
+    # =================================================
     def run(self, output_dir=None):
 
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
 
-        # ---- Bước 1: Greedy → nghiệm thô O(n²) ----
-        greedy_route, greedy_cost = self._greedy_initial(start=0)
+        frames = []
+        frame_count = [0]
 
-        # ---- Bước 2: 3-opt cải thiện nghiệm greedy O(n³) ----
-        #   → best_cost chặt, gần tối ưu TRƯỚC khi BnB chạy
-        #   → BnB cắt tỉa phần lớn nhánh ngay từ node đầu tiên
-        warm_route = self._three_opt(greedy_route)
-        warm_cost  = self._route_cost(warm_route)
+        # =================================================
+        # GREEDY -> upper bound ban đầu
+        # =================================================
+        self._greedy_initial_solution()
 
-        self.best_route = warm_route
-        self.best_cost  = warm_cost
+        # =================================================
+        # BnB
+        # =================================================
+        self._branch_and_bound(
+            current=0,
+            visited=[0],
+            path=[0],
+            current_cost=0,
+            frames=frames,
+            output_dir=output_dir,
+            frame_count=frame_count
+        )
 
-        # ---- Bước 3: BnB tối ưu chính xác ----
-        #   nhờ best_cost chặt → không gian tìm kiếm thu hẹp đáng kể
-        self._bnb(start=0)
+        # =================================================
+        # Save GIF
+        # =================================================
+        if output_dir and frames:
 
-        # ---- Bước 4: Lưu ảnh ----
+            imageio.mimsave(
+                f'{output_dir}/bnb_process.gif',
+                frames,
+                fps=5
+            )
+
+        # =================================================
+        # Save final route
+        # =================================================
         if output_dir and self.best_route:
-            plt.figure(figsize=(7, 5))
 
-            route = [self.cities[i] for i in self.best_route]
+            plt.figure(figsize=(8, 6))
+
+            route = [
+                self.cities[i]
+                for i in self.best_route
+            ]
 
             x = [c.x for c in route] + [route[0].x]
             y = [c.y for c in route] + [route[0].y]
 
-            plt.plot(x, y, 'o-')
-            plt.title(f"Best TSP route (BnBPlus) | cost = {self.best_cost:.4f}")
+            plt.plot(x, y, 'ro-')
 
-            plt.savefig(f"{output_dir}/BnBPlusFinal.png")
+            plt.title(
+                f'Improved BnB Final Route\n'
+                f'Cost = {self.best_cost:.2f}'
+            )
+
+            plt.savefig(
+                f'{output_dir}/final_route.png'
+            )
+
             plt.close()
 
         return (
