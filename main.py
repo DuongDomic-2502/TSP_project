@@ -115,7 +115,7 @@ if __name__ == "__main__":
         algo = ACOPlus(
             cities=cities,
             n_ants=25,
-            n_iterations=80,
+            n_iterations=5,
             alpha=1.0,
             beta=4.0,
             evaporation_rate=0.5,
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         algo = GAPlus(
             cities=cities,
             pop_size=120,
-            n_generations=200,
+            n_generations=10,
             crossover_rate=0.9,
             mutation_rate=0.15
         )
