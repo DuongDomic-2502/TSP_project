@@ -125,16 +125,14 @@ if __name__ == "__main__":
         output_dir = f"{OUTPUT_ROOT}/ACOPlus"
         
         
-        
-        
     elif choice == 7:
         from AlgorithmsPlus.GAPlus import GAPlus
         algo = GAPlus(
             cities=cities,
-            pop_size=120,
-            n_generations=10,
+            pop_size=25,
+            n_generations=5,
             crossover_rate=0.9,
-            mutation_rate=0.15
+            mutation_rate=0.1
         )
         name = "GA Plus"
         output_dir = f"{OUTPUT_ROOT}/GAPlus"
